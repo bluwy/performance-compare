@@ -1,3 +1,4 @@
+import { increment } from '../../util.js'
 import React from "react";
 
 
@@ -8,6 +9,8 @@ let EFFECT_PROPS = {};
 
 
 function Triangle({ style }) {
+	increment()
+
     React.useEffect(() => {
     if (EFFECT_PROPS.hydration) {
         globalThis.__turbopackBenchBinding && globalThis.__turbopackBenchBinding("Hydration done");

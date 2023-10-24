@@ -6,9 +6,11 @@ import { buildTools } from "./benchmark/buildTools.mjs"
 
 const rootFilePath = path.resolve('src', 'comps', 'triangle.jsx');
 const leafFilePath = path.resolve('src', 'comps', 'triangle_1_1_2_1_2_2_1.jsx');
+const largeHmrFilePath = path.resolve('src', 'util.js');
 
 const originalRootFileContent = readFileSync(rootFilePath, 'utf-8');
 const originalLeafFileContent = readFileSync(leafFilePath, 'utf-8');
+const originalLargeHmrFileContent = readFileSync(largeHmrFilePath, 'utf-8');
 
 const {
   type,
@@ -83,11 +85,21 @@ if (runDev) {
       totalResult.leafHmr ??= 0;
       totalResult.leafHmr += (Date.now() - hmrLeafStart);
 
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      const largeHmrConsolePromise = page.waitForEvent('console', { predicate: e => e.text().includes('large hmr') });
+      writeFileSync(largeHmrFilePath, originalLargeHmrFileContent.replace('util.js', 'large hmr'))
+      const hmrLargeStart = Date.now();
+      await largeHmrConsolePromise;
+      totalResult.largeHmr ??= 0;
+      totalResult.largeHmr += (Date.now() - hmrLargeStart);
+
       buildTool.stop();
       await page.close();
 
       writeFileSync(rootFilePath, originalRootFileContent);
       writeFileSync(leafFilePath, originalLeafFileContent);
+      writeFileSync(largeHmrFilePath, originalLargeHmrFileContent);
     }
 
     const result = Object.fromEntries(Object.entries(totalResult).map(([k, v]) => [k, v ? (v / count).toFixed(1) : v]))
@@ -145,7 +157,8 @@ if (outputMd) {
                     : ''
                 }`,
                 `${result.rootHmr}ms`,
-                `${result.leafHmr}ms`
+                `${result.leafHmr}ms`,
+                `${result.largeHmr}ms`
               ]
             : []),
           ...(runBuild
@@ -169,6 +182,7 @@ if (outputMd) {
             }`,
             'Root HMR time': `${result.rootHmr}ms`,
             'Leaf HMR time': `${result.leafHmr}ms`,
+            'Large HMR time': `${result.largeHmr}ms`,
           }
         : {}),
       ...(runBuild
